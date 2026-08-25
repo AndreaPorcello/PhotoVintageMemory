@@ -73,7 +73,7 @@
   .badge.flip svg{flex:none}
   .vf{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;margin:12px 0}
   .box{position:relative;overflow:hidden;background:#050505}
-  #view{width:100%;height:100%;display:block;object-fit:fill}
+  #view{position:absolute;display:block;object-fit:fill}
   #view.mirror{transform:scaleX(-1)}
   #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
   .frame{position:absolute;inset:0;pointer-events:none}
@@ -150,6 +150,14 @@
       <button data-cap="24">24</button>
       <button data-cap="27" class="sel">27<small>usa-e-getta</small></button>
       <button data-cap="36">36</button>
+    </div>
+  </div>
+
+  <div class="opt">
+    <div class="lbl">Inquadratura</div>
+    <div class="seg" id="frameSeg">
+      <button data-frame="full" class="sel">Telefono<small>frame intero, ~24 mm</small></button>
+      <button data-frame="film">35 mm<small>fotogramma 3:2, ~30 mm</small></button>
     </div>
   </div>
 
@@ -366,7 +374,8 @@ function show(id){ screens.forEach(s=>$(s).classList.toggle("on",s===id)); }
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("on");
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),1800); }
 
-let chosenFilm="classic", chosenMode="now", chosenDate=true, chosenCap=27;
+let chosenFilm="classic", chosenMode="now", chosenDate=true, chosenCap=27, chosenFrame="full";
+const FILM_CROP=1.15;  // ~24mm -> ~28-30mm equivalenti
 
 /* ---------- Schermata scelta ---------- */
 function buildChooser(){
@@ -388,6 +397,10 @@ $("capSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
   $("capSeg").querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
   b.classList.add("sel"); chosenCap=+b.dataset.cap; $("brandCap").textContent=chosenCap;
 });
+$("frameSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  $("frameSeg").querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
+  b.classList.add("sel"); chosenFrame=b.dataset.frame;
+});
 $("modeSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
   $("modeSeg").querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
   b.classList.add("sel"); chosenMode=b.dataset.mode;
@@ -399,7 +412,7 @@ $("loadBtn").onclick=async()=>{
   const cur=await DB.getMeta();
   if(cur && cur.status==="shooting" && cur.count>0 &&
      !confirm("C'è un rullino in corso con "+cur.count+" scatti. Iniziarne uno nuovo li cancella. Continuare?")) return;
-  roll={ id:"r"+Date.now(), film:chosenFilm, mode:chosenMode, date:chosenDate,
+  roll={ id:"r"+Date.now(), film:chosenFilm, mode:chosenMode, date:chosenDate, frame:chosenFrame,
          capacity:chosenCap, count:0, status:"shooting", completedAt:null, revealAt:null };
   await DB.clearShots(); await DB.setMeta(roll);
   startCamera();
@@ -424,14 +437,30 @@ async function startCamera(){
     toast("Camera non disponibile. Consenti l'accesso o usa HTTPS.");
   }
 }
-/* Mirino a proporzioni reali del sensore: nessun ritaglio, vedi tutto ciò che vede la lente.
-   Come una usa-e-getta: obiettivo fisso, niente zoom. */
+/* Regione del sensore da mostrare e salvare.
+   full: frame intero (come il telefono).
+   film: fotogramma 3:2 orientato come il telefono, ridotto di FILM_CROP per
+         avvicinare il campo visivo a una usa-e-getta (~28-30 mm). */
+function cropRect(vw,vh,frame){
+  if(frame!=="film") return {x:0,y:0,w:vw,h:vh};
+  const ar = vw>=vh ? 3/2 : 2/3;
+  let w=vw, h=w/ar; if(h>vh){ h=vh; w=h*ar; }
+  w/=FILM_CROP; h/=FILM_CROP;
+  return {x:(vw-w)/2, y:(vh-h)/2, w, h};
+}
+/* Mirino: il box ha le proporzioni del ritaglio; il video viene scalato e
+   traslato in modo che il ritaglio riempia esattamente il box. */
 function fitBox(){
   const v=$("view"), box=$("box"), vf=box.parentElement;
-  if(!v.videoWidth) return;
-  const ar=v.videoWidth/v.videoHeight, W=vf.clientWidth, H=vf.clientHeight;
+  if(!v.videoWidth||!roll) return;
+  const c=cropRect(v.videoWidth,v.videoHeight,roll.frame);
+  const ar=c.w/c.h, W=vf.clientWidth, H=vf.clientHeight;
   let w=W, h=W/ar; if(h>H){ h=H; w=H*ar; }
-  box.style.width=Math.floor(w)+"px"; box.style.height=Math.floor(h)+"px";
+  w=Math.floor(w); h=Math.floor(h);
+  box.style.width=w+"px"; box.style.height=h+"px";
+  const sc=w/c.w;
+  v.style.width=(v.videoWidth*sc)+"px"; v.style.height=(v.videoHeight*sc)+"px";
+  v.style.left=(-c.x*sc)+"px"; v.style.top=(-c.y*sc)+"px";
 }
 window.addEventListener("resize",fitBox);
 $("flipBtn").onclick=async()=>{ facing = facing==="environment" ? "user" : "environment";
@@ -453,14 +482,14 @@ $("shutter").onclick=async()=>{
   if(!v.videoWidth){ toast("Attendi l'avvio della camera"); return; }
   // flash
   $("flash").animate([{opacity:.9},{opacity:0}],{duration:180});
-  // cattura il frame intero del sensore (stesso contenuto del mirino)
-  const vw=v.videoWidth, vh=v.videoHeight;
-  const scale=Math.min(1, MAXDIM/Math.max(vw,vh));
-  const w=Math.round(vw*scale), h=Math.round(vh*scale);
+  // cattura esattamente la regione mostrata nel mirino
+  const c=cropRect(v.videoWidth,v.videoHeight,roll.frame);
+  const scale=Math.min(1, MAXDIM/Math.max(c.w,c.h));
+  const w=Math.round(c.w*scale), h=Math.round(c.h*scale);
   const cv=$("work"); cv.width=w; cv.height=h;
   const ctx=cv.getContext("2d");
   if(facing==="user"){ ctx.translate(w,0); ctx.scale(-1,1); }   // salva come la vedi
-  ctx.drawImage(v,0,0,w,h);
+  ctx.drawImage(v,c.x,c.y,c.w,c.h,0,0,w,h);
   ctx.setTransform(1,0,0,1,0,0);
   applyFilm(ctx,w,h,FILMS[roll.film],{date:roll.date});
   const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.9));
