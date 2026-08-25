@@ -63,38 +63,39 @@
   .toggle .sw.on i{left:23px}
 
   /* ---------- CAMERA ---------- */
-  #camera{background:#000;position:relative}
-  #view{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #camera{background:#000}
+  .cam-ui{display:flex;flex-direction:column;height:100%;
+    padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 18px)}
+  .cam-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .badge{background:#000000aa;border:1px solid #ffffff22;border-radius:2px;padding:8px 10px;
+    font-size:10px;letter-spacing:.14em;color:#fff;text-transform:uppercase}
+  .vf{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;margin:12px 0}
+  .box{position:relative;overflow:hidden;background:#050505}
+  #view{width:100%;height:100%;display:block;object-fit:fill}
+  #view.mirror{transform:scaleX(-1)}
   #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
-  .cam-ui{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;
-    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 20px)}
-  .cam-top{display:flex;justify-content:space-between;align-items:flex-start}
-  .badge{background:#000000aa;border:1px solid #ffffff22;border-radius:2px;padding:6px 10px;
-    font-size:10px;letter-spacing:.14em;color:#fff;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .frame{position:absolute;inset:0;pointer-events:none}
+  .frame::before,.frame::after,.frame i::before,.frame i::after{content:"";position:absolute;
+    width:18px;height:18px;border:2px solid #ffffffcc}
+  .frame::before{top:0;left:0;border-right:none;border-bottom:none}
+  .frame::after{top:0;right:0;border-left:none;border-bottom:none}
+  .frame i::before{bottom:0;left:0;border-right:none;border-top:none}
+  .frame i::after{bottom:0;right:0;border-left:none;border-top:none}
+  .cam-bottom{display:flex;align-items:center;justify-content:space-between;gap:14px}
   .counter{background:#000000cc;border:1px solid var(--amber);border-radius:2px;
-    padding:5px 12px;text-align:center;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+    padding:5px 12px;text-align:center;flex:none}
   .counter b{font-size:26px;color:var(--amber);font-weight:800;line-height:1;
     text-shadow:0 0 10px #f5a62366}
   .counter span{display:block;font-size:8px;letter-spacing:.28em;color:#c9a15e;margin-top:2px}
-  .frame{flex:1;margin:14px 4px;border:1px solid #ffffff33;border-radius:2px;position:relative}
-  .frame::before,.frame::after,.frame i::before,.frame i::after{content:"";position:absolute;
-    width:16px;height:16px;border:2px solid #ffffffcc}
-  .frame::before{top:-1px;left:-1px;border-right:none;border-bottom:none}
-  .frame::after{top:-1px;right:-1px;border-left:none;border-bottom:none}
-  .frame i::before{bottom:-1px;left:-1px;border-right:none;border-top:none}
-  .frame i::after{bottom:-1px;right:-1px;border-left:none;border-top:none}
-  .cam-bottom{display:flex;align-items:center;justify-content:space-between;gap:16px}
-  .shutter{width:74px;height:74px;border-radius:50%;background:#fff;border:5px solid #ffffff55;
+  .shutter{width:78px;height:78px;border-radius:50%;background:#fff;border:5px solid #ffffff55;
     flex:none;transition:transform .08s}
   .shutter:active{transform:scale(.92)}
   .shutter:disabled{background:#555;border-color:#ffffff22}
-  .wind{flex:1;padding:16px 10px;border:1px solid var(--safelight);border-radius:2px;
+  .wind{flex:1;max-width:150px;padding:18px 10px;border:1px solid var(--safelight);border-radius:2px;
     background:#e8531f22;color:#fff;font-size:11px;letter-spacing:.16em;text-transform:uppercase}
   .wind:disabled{opacity:.25;border-color:#ffffff33;background:transparent}
   .wind.arm{animation:pulse 1.1s infinite}
   @keyframes pulse{50%{background:#e8531f55}}
-  .side{width:56px;flex:none;text-align:center}
-  .side button{font-size:10px;color:#fff9;letter-spacing:.1em;padding:8px 0}
 
   /* ---------- DEVELOPING ---------- */
   #dev{align-items:center;justify-content:center;text-align:center}
@@ -161,18 +162,21 @@
 
 <!-- ================= CAMERA ================= -->
 <section id="camera" class="screen">
-  <video id="view" playsinline muted autoplay></video>
-  <div id="flash"></div>
   <div class="cam-ui">
     <div class="cam-top">
+      <button class="badge" id="quitBtn">← Esci</button>
       <div class="badge" id="filmBadge">CLASSIC</div>
-      <div class="counter"><b id="remain">27</b><span>rimasti</span></div>
+      <button class="badge" id="flipBtn" aria-label="inverti fotocamera">⟲ Cam</button>
     </div>
-    <div class="frame"><i></i></div>
+    <div class="vf"><div class="box" id="box">
+      <video id="view" playsinline muted autoplay></video>
+      <div id="flash"></div>
+      <div class="frame"><i></i></div>
+    </div></div>
     <div class="cam-bottom">
-      <div class="side"><button id="quitBtn">Esci</button></div>
-      <button class="shutter" id="shutter" aria-label="scatta"></button>
       <button class="wind" id="wind" disabled>Avanza</button>
+      <div class="counter"><b id="remain">27</b><span>rimasti</span></div>
+      <button class="shutter" id="shutter" aria-label="scatta"></button>
     </div>
   </div>
 </section>
@@ -219,19 +223,28 @@ const MAXDIM = 1600;               // lato lungo massimo dello scatto
 const LOCK_MS = 24*60*60*1000;     // 24 ore
 
 /* ---------- PELLICOLE (pipeline di filtri sul canvas) ---------- */
+/* Sei pellicole, ricalcate sulle 6 dell'app Flashback (4 storiche + 2 esclusive V2).
+   Le LUT originali sono proprietarie: queste sono approssimazioni basate sulle
+   descrizioni pubblicate, da rifinire dal vivo. */
 const FILMS = {
-  classic:{ name:"Classic", desc:"Caldo, contrasto morbido, look anni 2000",
-    rM:1.09,rA:6, gM:1.00,gA:0, bM:0.90,bA:-3, contrast:1.14, sat:1.16, lift:10, grain:16,
-    vignette:.34, tealShadow:0, orangeHi:0, mono:false, date:true },
-  mono:{ name:"Mono", desc:"Bianco e nero contrastato, grana marcata",
-    rM:1,gM:1,bM:1,rA:0,gA:0,bA:0, contrast:1.26, sat:0, lift:6, grain:26,
-    vignette:.42, tealShadow:0, orangeHi:0, mono:true, date:false },
-  beta:{ name:"Beta", desc:"Freddo e sbiadito, estetica VHS / Y2K",
-    rM:0.96,rA:0, gM:1.04,gA:2, bM:1.09,bA:4, contrast:0.96, sat:0.82, lift:24, grain:22,
-    vignette:.24, tealShadow:0, orangeHi:0, mono:false, date:true },
-  cine:{ name:"Cine", desc:"Teal & orange cinematografico, grana fine",
-    rM:1.05,rA:2, gM:1.00,gA:0, bM:1.02,bA:0, contrast:1.16, sat:1.10, lift:8, grain:12,
-    vignette:.46, tealShadow:.16, orangeHi:.14, mono:false, date:false }
+  classic:{ name:"Classic", desc:"La neutra di base, leggermente fredda, grana leggera",
+    rM:0.99,rA:0, gM:1.00,gA:0, bM:1.04,bA:3, contrast:1.10, sat:1.00, lift:8, grain:16,
+    vignette:.30, tealShadow:0, redHi:0, mono:false, date:true },
+  beta:{ name:"Beta", desc:"Tono rosa/rosso stile Fuji Pro H, più granulosa",
+    rM:1.08,rA:8, gM:0.97,gA:0, bM:1.00,bA:3, contrast:1.04, sat:0.95, lift:14, grain:24,
+    vignette:.30, tealShadow:0, redHi:0, mono:false, date:true },
+  mono:{ name:"B&W", desc:"Bianco e nero a contrasto medio, un po' di grana",
+    rM:1,gM:1,bM:1,rA:0,gA:0,bA:0, contrast:1.18, sat:0, lift:8, grain:22,
+    vignette:.36, tealShadow:0, redHi:0, mono:true, date:false },
+  cine:{ name:"Cine", desc:"Teal e rosso, ispirata a Lomo Turquoise / infrarosso",
+    rM:1.04,rA:2, gM:1.00,gA:0, bM:1.02,bA:0, contrast:1.14, sat:1.08, lift:8, grain:14,
+    vignette:.42, tealShadow:.20, redHi:.14, mono:false, date:true },
+  gold:{ name:"Gold", desc:"Omaggio Kodak Gold: calda, un po' più satura",
+    rM:1.06,rA:5, gM:1.02,gA:1, bM:0.94,bA:-2, contrast:1.10, sat:1.16, lift:8, grain:16,
+    vignette:.30, tealShadow:0, redHi:0, mono:false, date:true },
+  retrohaze:{ name:"Retrohaze", desc:"Viola nebbioso stile LomoChrome Purple",
+    rM:1.05,rA:6, gM:0.90,gA:0, bM:1.10,bA:10, contrast:1.00, sat:1.00, lift:18, grain:22,
+    vignette:.26, tealShadow:0, redHi:0, mono:false, date:true }
 };
 
 function clamp(v){ return v<0?0:v>255?255:v; }
@@ -252,11 +265,11 @@ function applyFilm(ctx,w,h,f,opts){
       r=l+(r-l)*f.sat; g=l+(g-l)*f.sat; b=l+(b-l)*f.sat;
     }
     if(lift){ r=r+lift*(1-r/255); g=g+lift*(1-g/255); b=b+lift*(1-b/255); } // black lift
-    if(f.tealShadow||f.orangeHi){                                // split-tone Cine
+    if(f.tealShadow||f.redHi){                                   // split-tone Cine
       const l=(r+g+b)/765;                                       // 0..1
       const sh=(1-l), hi=l;
       g+=f.tealShadow*40*sh; b+=f.tealShadow*55*sh;              // ombre -> teal
-      r+=f.orangeHi*55*hi;   g+=f.orangeHi*22*hi;                // luci -> arancio
+      r+=f.redHi*55*hi;      g-=f.redHi*10*hi;                   // luci -> rosso
     }
     if(f.grain){                                                 // grana
       const n=(Math.random()-0.5)*f.grain;
@@ -325,7 +338,7 @@ const DB={ _p:null,
 };
 
 /* ---------- Stato & routing ---------- */
-let roll=null, stream=null, armed=false, devTimer=null;
+let roll=null, stream=null, armed=false, devTimer=null, facing="environment";
 const $=id=>document.getElementById(id);
 const screens=["chooser","camera","dev","gallery"];
 function show(id){ screens.forEach(s=>$(s).classList.toggle("on",s===id)); }
@@ -373,15 +386,30 @@ async function startCamera(){
   show("camera");
   $("filmBadge").textContent=FILMS[roll.film].name.toUpperCase();
   updateRemain(); armShutter(true,false);
+  stopCamera();
   try{
     stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:"environment"}, width:{ideal:1920}}, audio:false});
+      video:{facingMode:{ideal:facing}, width:{ideal:1920}}, audio:false});
     const v=$("view"); v.srcObject=stream;
+    v.classList.toggle("mirror",facing==="user");
+    v.onloadedmetadata=fitBox;
     try{ await v.play(); }catch(e){}
+    fitBox();
   }catch(e){
     toast("Camera non disponibile. Consenti l'accesso o usa HTTPS.");
   }
 }
+/* Mirino a proporzioni reali del sensore: nessun ritaglio, vedi tutto ciò che vede la lente.
+   Come una usa-e-getta: obiettivo fisso, niente zoom. */
+function fitBox(){
+  const v=$("view"), box=$("box"), vf=box.parentElement;
+  if(!v.videoWidth) return;
+  const ar=v.videoWidth/v.videoHeight, W=vf.clientWidth, H=vf.clientHeight;
+  let w=W, h=W/ar; if(h>H){ h=H; w=H*ar; }
+  box.style.width=Math.floor(w)+"px"; box.style.height=Math.floor(h)+"px";
+}
+window.addEventListener("resize",fitBox);
+$("flipBtn").onclick=()=>{ facing = facing==="environment" ? "user" : "environment"; startCamera(); };
 function stopCamera(){ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
 function updateRemain(){ $("remain").textContent=roll.capacity-roll.count; }
 function armShutter(shutterOn,windArm){
@@ -399,17 +427,15 @@ $("shutter").onclick=async()=>{
   if(!v.videoWidth){ toast("Attendi l'avvio della camera"); return; }
   // flash
   $("flash").animate([{opacity:.9},{opacity:0}],{duration:180});
-  // cattura frame con lo stesso crop "cover" del mirino: ciò che vedi è ciò che salvi
+  // cattura il frame intero del sensore (stesso contenuto del mirino)
   const vw=v.videoWidth, vh=v.videoHeight;
-  const ew=v.clientWidth||vw, eh=v.clientHeight||vh;
-  const sc=Math.max(ew/vw, eh/vh);                 // scala usata da object-fit:cover
-  const sw=Math.round(ew/sc), sh=Math.round(eh/sc); // regione sorgente visibile
-  const sx=Math.round((vw-sw)/2), sy=Math.round((vh-sh)/2);
-  const scale=Math.min(1, MAXDIM/Math.max(sw,sh));
-  const w=Math.round(sw*scale), h=Math.round(sh*scale);
+  const scale=Math.min(1, MAXDIM/Math.max(vw,vh));
+  const w=Math.round(vw*scale), h=Math.round(vh*scale);
   const cv=$("work"); cv.width=w; cv.height=h;
   const ctx=cv.getContext("2d");
-  ctx.drawImage(v,sx,sy,sw,sh,0,0,w,h);
+  if(facing==="user"){ ctx.translate(w,0); ctx.scale(-1,1); }   // salva come la vedi
+  ctx.drawImage(v,0,0,w,h);
+  ctx.setTransform(1,0,0,1,0,0);
   applyFilm(ctx,w,h,FILMS[roll.film],{date:roll.date});
   const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.9));
   await DB.addShot({ id:roll.id+"_"+roll.count, rollId:roll.id, blob, takenAt:Date.now() });
