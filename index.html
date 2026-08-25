@@ -69,6 +69,8 @@
   .cam-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
   .badge{background:#000000aa;border:1px solid #ffffff22;border-radius:2px;padding:8px 10px;
     font-size:10px;letter-spacing:.14em;color:#fff;text-transform:uppercase}
+  .badge.flip{display:flex;align-items:center;gap:7px;border-color:var(--plastic);color:var(--plastic)}
+  .badge.flip svg{flex:none}
   .vf{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;margin:12px 0}
   .box{position:relative;overflow:hidden;background:#050505}
   #view{width:100%;height:100%;display:block;object-fit:fill}
@@ -107,7 +109,10 @@
   .count-lbl{font-size:11px;letter-spacing:.3em;color:var(--muted);text-transform:uppercase;margin-top:6px}
 
   /* ---------- GALLERY ---------- */
-  #gallery{overflow-y:auto}
+  #gallery{overflow:hidden}
+  .g-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .g-foot{flex:none;padding:12px 20px calc(env(safe-area-inset-bottom) + 14px);
+    background:linear-gradient(to top,var(--dark) 70%,transparent);border-top:1px solid var(--line)}
   .g-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .grid img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:2px;background:#000;display:block}
@@ -132,11 +137,21 @@
 
 <!-- ================= CHOOSER ================= -->
 <section id="chooser" class="screen on pad">
-  <div class="brand"><span class="n">PhotoVintageMemory</span><span class="v">27</span></div>
-  <p class="lede">Scegli la pellicola, carica il rullino, scatta 27 volte. Le foto restano
+  <div class="brand"><span class="n">PhotoVintageMemory</span><span class="v" id="brandCap">27</span></div>
+  <p class="lede">Scegli pellicola e lunghezza del rullino, poi scatta. Le foto restano
      invisibili finché il rullino non è finito. Come una usa-e-getta.</p>
 
   <div class="films" id="films"></div>
+
+  <div class="opt">
+    <div class="lbl">Scatti per rullino</div>
+    <div class="seg" id="capSeg">
+      <button data-cap="12">12</button>
+      <button data-cap="24">24</button>
+      <button data-cap="27" class="sel">27<small>usa-e-getta</small></button>
+      <button data-cap="36">36</button>
+    </div>
+  </div>
 
   <div class="opt">
     <div class="lbl">Sviluppo</div>
@@ -166,7 +181,12 @@
     <div class="cam-top">
       <button class="badge" id="quitBtn">← Esci</button>
       <div class="badge" id="filmBadge">CLASSIC</div>
-      <button class="badge" id="flipBtn" aria-label="inverti fotocamera">⟲ Cam</button>
+      <button class="badge flip" id="flipBtn" aria-label="inverti fotocamera">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 12a8 8 0 0 1-13.7 5.6"/><path d="M4 12a8 8 0 0 1 13.7-5.6"/>
+          <polyline points="17 2 17.7 6.4 13.3 7"/><polyline points="7 22 6.3 17.6 10.7 17"/>
+          <rect x="9" y="9.5" width="6" height="5" rx="1"/><circle cx="12" cy="12" r="1.2"/>
+        </svg><span>Inverti</span></button>
     </div>
     <div class="vf"><div class="box" id="box">
       <video id="view" playsinline muted autoplay></video>
@@ -194,14 +214,15 @@
 </section>
 
 <!-- ================= GALLERY ================= -->
-<section id="gallery" class="screen pad">
-  <div class="g-head">
-    <div><h1>Rullino sviluppato</h1><div id="galCount" style="font-size:12px;color:var(--muted)"></div></div>
-    <button class="btn ghost" style="width:auto;padding:10px 14px" id="newRoll">Nuovo</button>
+<section id="gallery" class="screen">
+  <div class="g-scroll pad">
+    <div class="g-head">
+      <div><h1>Rullino sviluppato</h1><div id="galCount" style="font-size:12px;color:var(--muted)"></div></div>
+      <button class="btn ghost" style="width:auto;padding:10px 14px" id="newRoll">Nuovo</button>
+    </div>
+    <div class="grid" id="galGrid"></div>
   </div>
-  <div class="grid" id="galGrid"></div>
-  <div style="height:16px"></div>
-  <button class="btn" id="saveAll">Salva tutte sul telefono</button>
+  <div class="g-foot"><button class="btn" id="saveAll">Salva tutte sul telefono</button></div>
 </section>
 
 <!-- lightbox -->
@@ -345,7 +366,7 @@ function show(id){ screens.forEach(s=>$(s).classList.toggle("on",s===id)); }
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("on");
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),1800); }
 
-let chosenFilm="classic", chosenMode="now", chosenDate=true;
+let chosenFilm="classic", chosenMode="now", chosenDate=true, chosenCap=27;
 
 /* ---------- Schermata scelta ---------- */
 function buildChooser(){
@@ -363,6 +384,10 @@ function buildChooser(){
     wrap.appendChild(el);
   });
 }
+$("capSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  $("capSeg").querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
+  b.classList.add("sel"); chosenCap=+b.dataset.cap; $("brandCap").textContent=chosenCap;
+});
 $("modeSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
   $("modeSeg").querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
   b.classList.add("sel"); chosenMode=b.dataset.mode;
@@ -375,7 +400,7 @@ $("loadBtn").onclick=async()=>{
   if(cur && cur.status==="shooting" && cur.count>0 &&
      !confirm("C'è un rullino in corso con "+cur.count+" scatti. Iniziarne uno nuovo li cancella. Continuare?")) return;
   roll={ id:"r"+Date.now(), film:chosenFilm, mode:chosenMode, date:chosenDate,
-         capacity:CAPACITY, count:0, status:"shooting", completedAt:null, revealAt:null };
+         capacity:chosenCap, count:0, status:"shooting", completedAt:null, revealAt:null };
   await DB.clearShots(); await DB.setMeta(roll);
   startCamera();
 };
@@ -409,7 +434,8 @@ function fitBox(){
   box.style.width=Math.floor(w)+"px"; box.style.height=Math.floor(h)+"px";
 }
 window.addEventListener("resize",fitBox);
-$("flipBtn").onclick=()=>{ facing = facing==="environment" ? "user" : "environment"; startCamera(); };
+$("flipBtn").onclick=async()=>{ facing = facing==="environment" ? "user" : "environment";
+  await startCamera(); if(stream) toast(facing==="user"?"Fotocamera frontale":"Fotocamera posteriore"); };
 function stopCamera(){ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
 function updateRemain(){ $("remain").textContent=roll.capacity-roll.count; }
 function armShutter(shutterOn,windArm){
