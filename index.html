@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1a1410">
+<title>PhotoVintageMemory</title>
+<style>
+  :root{
+    --dark:#161210;      /* darkroom near-black */
+    --dark2:#221b16;
+    --safelight:#e8531f; /* safelight amber-red */
+    --amber:#f5a623;     /* datestamp / counter glow */
+    --plastic:#4fd0c7;   /* translucent camera-body teal */
+    --paper:#ede4d3;     /* print paper */
+    --muted:#8a7d70;
+    --line:#3a2f27;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;min-height:100vh;min-height:100dvh;background:var(--dark);color:var(--paper);
+    font-family:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+    overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+  body{display:flex;flex-direction:column}
+  .screen{flex:1;display:none;flex-direction:column;min-height:0}
+  .screen.on{display:flex}
+  .pad{padding:20px}
+  h1{font-size:13px;letter-spacing:.42em;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin:0 0 2px}
+  .lede{font-size:12px;color:var(--muted);line-height:1.5;margin:0 0 18px}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  .btn{width:100%;padding:16px;border-radius:2px;background:var(--safelight);color:#160b06;
+    font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:13px;
+    border:1px solid #00000033}
+  .btn:disabled{background:#3a2f27;color:#6b5e52}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--paper)}
+
+  /* ---------- CHOOSER ---------- */
+  #chooser{overflow-y:auto}
+  .brand{display:flex;align-items:baseline;gap:10px;margin-bottom:16px}
+  .brand .n{font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--paper)}
+  .brand .v{font-size:11px;color:var(--plastic);letter-spacing:.3em}
+  .films{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px}
+  .film{border:1px solid var(--line);border-radius:3px;overflow:hidden;background:#0e0b09;
+    text-align:left;transition:border-color .15s}
+  .film.sel{border-color:var(--safelight)}
+  .film canvas{width:100%;display:block;aspect-ratio:1/1;object-fit:cover;background:#000}
+  .film .meta{padding:9px 11px}
+  .film .fn{font-size:13px;font-weight:700;letter-spacing:.04em}
+  .film .fd{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.35}
+  .film.sel .fn{color:var(--safelight)}
+  .opt{border-top:1px solid var(--line);padding:16px 0}
+  .opt .lbl{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .seg{display:flex;gap:8px}
+  .seg button{flex:1;padding:13px 8px;border:1px solid var(--line);border-radius:2px;
+    background:transparent;color:var(--muted);font-size:11px;letter-spacing:.06em;line-height:1.3}
+  .seg button.sel{border-color:var(--plastic);color:var(--paper);background:#12211f}
+  .seg small{display:block;font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:0}
+  .toggle{display:flex;align-items:center;justify-content:space-between}
+  .toggle .sw{width:46px;height:26px;border-radius:20px;background:#3a2f27;position:relative;transition:.15s}
+  .toggle .sw.on{background:var(--safelight)}
+  .toggle .sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+    background:var(--paper);transition:.15s}
+  .toggle .sw.on i{left:23px}
+
+  /* ---------- CAMERA ---------- */
+  #camera{background:#000;position:relative}
+  #view{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+  .cam-ui{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;
+    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 20px)}
+  .cam-top{display:flex;justify-content:space-between;align-items:flex-start}
+  .badge{background:#000000aa;border:1px solid #ffffff22;border-radius:2px;padding:6px 10px;
+    font-size:10px;letter-spacing:.14em;color:#fff;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .counter{background:#000000cc;border:1px solid var(--amber);border-radius:2px;
+    padding:5px 12px;text-align:center;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .counter b{font-size:26px;color:var(--amber);font-weight:800;line-height:1;
+    text-shadow:0 0 10px #f5a62366}
+  .counter span{display:block;font-size:8px;letter-spacing:.28em;color:#c9a15e;margin-top:2px}
+  .frame{flex:1;margin:14px 4px;border:1px solid #ffffff33;border-radius:2px;position:relative}
+  .frame::before,.frame::after,.frame i::before,.frame i::after{content:"";position:absolute;
+    width:16px;height:16px;border:2px solid #ffffffcc}
+  .frame::before{top:-1px;left:-1px;border-right:none;border-bottom:none}
+  .frame::after{top:-1px;right:-1px;border-left:none;border-bottom:none}
+  .frame i::before{bottom:-1px;left:-1px;border-right:none;border-top:none}
+  .frame i::after{bottom:-1px;right:-1px;border-left:none;border-top:none}
+  .cam-bottom{display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .shutter{width:74px;height:74px;border-radius:50%;background:#fff;border:5px solid #ffffff55;
+    flex:none;transition:transform .08s}
+  .shutter:active{transform:scale(.92)}
+  .shutter:disabled{background:#555;border-color:#ffffff22}
+  .wind{flex:1;padding:16px 10px;border:1px solid var(--safelight);border-radius:2px;
+    background:#e8531f22;color:#fff;font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+  .wind:disabled{opacity:.25;border-color:#ffffff33;background:transparent}
+  .wind.arm{animation:pulse 1.1s infinite}
+  @keyframes pulse{50%{background:#e8531f55}}
+  .side{width:56px;flex:none;text-align:center}
+  .side button{font-size:10px;color:#fff9;letter-spacing:.1em;padding:8px 0}
+
+  /* ---------- DEVELOPING ---------- */
+  #dev{align-items:center;justify-content:center;text-align:center}
+  .reel{width:120px;height:120px;border-radius:50%;border:3px solid var(--line);
+    border-top-color:var(--safelight);margin:0 auto 26px;animation:spin 1.4s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .count{font-size:44px;font-weight:800;color:var(--amber);letter-spacing:.02em;
+    text-shadow:0 0 16px #f5a62344}
+  .count-lbl{font-size:11px;letter-spacing:.3em;color:var(--muted);text-transform:uppercase;margin-top:6px}
+
+  /* ---------- GALLERY ---------- */
+  #gallery{overflow-y:auto}
+  .g-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:2px;background:#000;display:block}
+  .empty{color:var(--muted);font-size:12px;text-align:center;padding:40px 0}
+
+  /* lightbox */
+  #lb{position:fixed;inset:0;background:#000000f2;z-index:50;display:none;
+    flex-direction:column;padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 14px)}
+  #lb.on{display:flex}
+  #lb img{flex:1;min-height:0;object-fit:contain;width:100%}
+  #lb .lb-bar{display:flex;gap:10px;margin-top:12px}
+  #lb .lb-bar button{flex:1;padding:14px;border:1px solid var(--line);border-radius:2px;
+    font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+  .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 20px);transform:translateX(-50%);
+    background:#000d;border:1px solid var(--line);color:#fff;padding:10px 16px;border-radius:3px;
+    font-size:12px;z-index:99;opacity:0;transition:.2s;pointer-events:none}
+  .toast.on{opacity:1}
+  .hidden-canvas{display:none}
+</style>
+</head>
+<body>
+
+<!-- ================= CHOOSER ================= -->
+<section id="chooser" class="screen on pad">
+  <div class="brand"><span class="n">PhotoVintageMemory</span><span class="v">27</span></div>
+  <p class="lede">Scegli la pellicola, carica il rullino, scatta 27 volte. Le foto restano
+     invisibili finché il rullino non è finito. Come una usa-e-getta.</p>
+
+  <div class="films" id="films"></div>
+
+  <div class="opt">
+    <div class="lbl">Sviluppo</div>
+    <div class="seg" id="modeSeg">
+      <button data-mode="now" class="sel">Subito a fine rullino<small>reveal immediato</small></button>
+      <button data-mode="lock24h">Blocca 24h<small>sviluppo il giorno dopo</small></button>
+    </div>
+  </div>
+
+  <div class="opt toggle">
+    <div>
+      <div style="font-size:13px;font-weight:700">Datestamp</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">Data impressa sullo scatto</div>
+    </div>
+    <button id="dsToggle" class="sw on" aria-label="datestamp"><i></i></button>
+  </div>
+
+  <div style="height:18px"></div>
+  <button class="btn" id="loadBtn">Carica rullino</button>
+  <div style="height:14px"></div>
+  <button class="btn ghost" id="resumeBtn" style="display:none">Riprendi rullino in corso</button>
+</section>
+
+<!-- ================= CAMERA ================= -->
+<section id="camera" class="screen">
+  <video id="view" playsinline muted autoplay></video>
+  <div id="flash"></div>
+  <div class="cam-ui">
+    <div class="cam-top">
+      <div class="badge" id="filmBadge">CLASSIC</div>
+      <div class="counter"><b id="remain">27</b><span>rimasti</span></div>
+    </div>
+    <div class="frame"><i></i></div>
+    <div class="cam-bottom">
+      <div class="side"><button id="quitBtn">Esci</button></div>
+      <button class="shutter" id="shutter" aria-label="scatta"></button>
+      <button class="wind" id="wind" disabled>Avanza</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DEVELOPING ================= -->
+<section id="dev" class="screen pad">
+  <div>
+    <div class="reel"></div>
+    <div class="count" id="devCount">24:00:00</div>
+    <div class="count-lbl" id="devLbl">Sviluppo in corso</div>
+    <p class="lede" style="margin-top:26px;max-width:280px">Il rullino è pieno. Le foto compariranno
+       automaticamente allo scadere del tempo. Puoi chiudere l'app.</p>
+    <button class="btn ghost" id="devBack" style="max-width:280px;margin:0 auto">Torna all'inizio</button>
+  </div>
+</section>
+
+<!-- ================= GALLERY ================= -->
+<section id="gallery" class="screen pad">
+  <div class="g-head">
+    <div><h1>Rullino sviluppato</h1><div id="galCount" style="font-size:12px;color:var(--muted)"></div></div>
+    <button class="btn ghost" style="width:auto;padding:10px 14px" id="newRoll">Nuovo</button>
+  </div>
+  <div class="grid" id="galGrid"></div>
+  <div style="height:16px"></div>
+  <button class="btn" id="saveAll">Salva tutte sul telefono</button>
+</section>
+
+<!-- lightbox -->
+<div id="lb"><img id="lbImg" alt=""><div class="lb-bar">
+  <button id="lbSave">Salva</button><button id="lbClose">Chiudi</button></div></div>
+
+<canvas id="work" class="hidden-canvas"></canvas>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   RULLINO — fotocamera usa-e-getta virtuale, single-file.
+   Nessun backend. Foto e stato solo su questo dispositivo.
+   ============================================================ */
+
+const CAPACITY = 27;
+const MAXDIM = 1600;               // lato lungo massimo dello scatto
+const LOCK_MS = 24*60*60*1000;     // 24 ore
+
+/* ---------- PELLICOLE (pipeline di filtri sul canvas) ---------- */
+const FILMS = {
+  classic:{ name:"Classic", desc:"Caldo, contrasto morbido, look anni 2000",
+    rM:1.09,rA:6, gM:1.00,gA:0, bM:0.90,bA:-3, contrast:1.14, sat:1.16, lift:10, grain:16,
+    vignette:.34, tealShadow:0, orangeHi:0, mono:false, date:true },
+  mono:{ name:"Mono", desc:"Bianco e nero contrastato, grana marcata",
+    rM:1,gM:1,bM:1,rA:0,gA:0,bA:0, contrast:1.26, sat:0, lift:6, grain:26,
+    vignette:.42, tealShadow:0, orangeHi:0, mono:true, date:false },
+  beta:{ name:"Beta", desc:"Freddo e sbiadito, estetica VHS / Y2K",
+    rM:0.96,rA:0, gM:1.04,gA:2, bM:1.09,bA:4, contrast:0.96, sat:0.82, lift:24, grain:22,
+    vignette:.24, tealShadow:0, orangeHi:0, mono:false, date:true },
+  cine:{ name:"Cine", desc:"Teal & orange cinematografico, grana fine",
+    rM:1.05,rA:2, gM:1.00,gA:0, bM:1.02,bA:0, contrast:1.16, sat:1.10, lift:8, grain:12,
+    vignette:.46, tealShadow:.16, orangeHi:.14, mono:false, date:false }
+};
+
+function clamp(v){ return v<0?0:v>255?255:v; }
+
+/* Applica una pellicola all'intero contesto 2D (w x h). Usato sia per le
+   anteprime della schermata iniziale sia per lo scatto reale: stesso codice,
+   così ciò che vedi in preview è ciò che ottieni. */
+function applyFilm(ctx,w,h,f,opts){
+  const img = ctx.getImageData(0,0,w,h), d = img.data;
+  const c = f.contrast, lift = f.lift;
+  for(let i=0;i<d.length;i+=4){
+    let r=d[i],g=d[i+1],b=d[i+2];
+    if(f.mono){ const l=0.299*r+0.587*g+0.114*b; r=g=b=l; }
+    r=r*f.rM+f.rA; g=g*f.gM+f.gA; b=b*f.bM+f.bA;                 // canale
+    r=(r-128)*c+128; g=(g-128)*c+128; b=(b-128)*c+128;          // contrasto
+    if(!f.mono && f.sat!==1){                                    // saturazione
+      const l=0.299*r+0.587*g+0.114*b;
+      r=l+(r-l)*f.sat; g=l+(g-l)*f.sat; b=l+(b-l)*f.sat;
+    }
+    if(lift){ r=r+lift*(1-r/255); g=g+lift*(1-g/255); b=b+lift*(1-b/255); } // black lift
+    if(f.tealShadow||f.orangeHi){                                // split-tone Cine
+      const l=(r+g+b)/765;                                       // 0..1
+      const sh=(1-l), hi=l;
+      g+=f.tealShadow*40*sh; b+=f.tealShadow*55*sh;              // ombre -> teal
+      r+=f.orangeHi*55*hi;   g+=f.orangeHi*22*hi;                // luci -> arancio
+    }
+    if(f.grain){                                                 // grana
+      const n=(Math.random()-0.5)*f.grain;
+      r+=n; g+=n; b+=n;
+    }
+    d[i]=clamp(r); d[i+1]=clamp(g); d[i+2]=clamp(b);
+  }
+  ctx.putImageData(img,0,0);
+
+  if(f.vignette){                                               // vignettatura
+    const g=ctx.createRadialGradient(w/2,h/2,Math.min(w,h)*0.28,w/2,h/2,Math.max(w,h)*0.72);
+    g.addColorStop(0,"rgba(0,0,0,0)");
+    g.addColorStop(1,"rgba(0,0,0,"+f.vignette+")");
+    ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+  }
+  if(f.date && opts && opts.date){                              // datestamp
+    const dt=new Date(), yy=String(dt.getFullYear()).slice(2);
+    const s="'"+yy+" "+(dt.getMonth()+1)+" "+dt.getDate();
+    const size=Math.round(Math.min(w,h)*0.045);
+    ctx.font="700 "+size+"px ui-monospace,monospace";
+    ctx.textAlign="right"; ctx.textBaseline="bottom";
+    ctx.shadowColor="rgba(245,120,20,.9)"; ctx.shadowBlur=size*0.5;
+    ctx.fillStyle="#ff8c1e";
+    ctx.fillText(s, w-size*0.7, h-size*0.7);
+    ctx.shadowBlur=0;
+  }
+}
+
+/* Scena campione sintetica per le anteprime (cielo, pelle, bianchi, neri) */
+function drawSample(ctx,w,h){
+  const sky=ctx.createLinearGradient(0,0,0,h);
+  sky.addColorStop(0,"#5b8fc9"); sky.addColorStop(1,"#cfe0ea");
+  ctx.fillStyle=sky; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="#e6b98f"; ctx.beginPath(); ctx.arc(w*0.5,h*0.56,w*0.20,0,7); ctx.fill(); // volto
+  ctx.fillStyle="#b8703f"; ctx.fillRect(0,h*0.78,w,h*0.22);                                // terra
+  ctx.fillStyle="#f4f4f4"; ctx.fillRect(w*0.08,h*0.1,w*0.14,h*0.14);                        // bianco
+  ctx.fillStyle="#151515"; ctx.fillRect(w*0.78,h*0.1,w*0.14,h*0.14);                        // nero
+  ctx.fillStyle="#d64b3a"; ctx.fillRect(w*0.1,h*0.62,w*0.1,h*0.1);
+  ctx.fillStyle="#3a9d5d"; ctx.fillRect(w*0.24,h*0.62,w*0.1,h*0.1);
+}
+
+/* ---------- IndexedDB minimale ----------
+   Ogni metodo crea transazione e richiesta nello stesso tick sincrono:
+   evita TransactionInactiveError su Safari. */
+const DB={ _p:null,
+  open(){ return this._p||(this._p=new Promise((res,rej)=>{
+    const r=indexedDB.open("rullino",1);
+    r.onupgradeneeded=e=>{ const db=e.target.result;
+      if(!db.objectStoreNames.contains("meta")) db.createObjectStore("meta");
+      if(!db.objectStoreNames.contains("shots")) db.createObjectStore("shots",{keyPath:"id"});
+    };
+    r.onsuccess=e=>res(e.target.result); r.onerror=e=>rej(e.target.error);
+  })); },
+  async run(store,mode,fn){ const db=await this.open();
+    return new Promise((res,rej)=>{
+      const tx=db.transaction(store,mode), q=fn(tx.objectStore(store));
+      q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error);
+    }); },
+  getMeta(){ return this.run("meta","readonly",s=>s.get("roll")).then(v=>v||null).catch(()=>null); },
+  setMeta(v){ return this.run("meta","readwrite",s=>s.put(v,"roll")); },
+  delMeta(){ return this.run("meta","readwrite",s=>s.delete("roll")); },
+  addShot(o){ return this.run("shots","readwrite",s=>s.put(o)); },
+  allShots(rollId){ return this.run("shots","readonly",s=>s.getAll())
+    .then(a=>(a||[]).filter(x=>x.rollId===rollId).sort((a,b)=>a.takenAt-b.takenAt)); },
+  clearShots(){ return this.run("shots","readwrite",s=>s.clear()); }
+};
+
+/* ---------- Stato & routing ---------- */
+let roll=null, stream=null, armed=false, devTimer=null;
+const $=id=>document.getElementById(id);
+const screens=["chooser","camera","dev","gallery"];
+function show(id){ screens.forEach(s=>$(s).classList.toggle("on",s===id)); }
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("on");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),1800); }
+
+let chosenFilm="classic", chosenMode="now", chosenDate=true;
+
+/* ---------- Schermata scelta ---------- */
+function buildChooser(){
+  const wrap=$("films"); wrap.innerHTML="";
+  Object.entries(FILMS).forEach(([key,f])=>{
+    const el=document.createElement("button");
+    el.className="film"+(key===chosenFilm?" sel":"");
+    el.innerHTML=`<canvas width="200" height="200"></canvas>
+      <div class="meta"><div class="fn">${f.name}</div><div class="fd">${f.desc}</div></div>`;
+    const cv=el.querySelector("canvas"), ctx=cv.getContext("2d");
+    drawSample(ctx,200,200); applyFilm(ctx,200,200,f,{date:false});
+    el.onclick=()=>{ chosenFilm=key;
+      wrap.querySelectorAll(".film").forEach(x=>x.classList.remove("sel"));
+      el.classList.add("sel"); };
+    wrap.appendChild(el);
+  });
+}
+$("modeSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  $("modeSeg").querySelectorAll("button").forEach(x=>x.classList.remove("sel"));
+  b.classList.add("sel"); chosenMode=b.dataset.mode;
+});
+$("dsToggle").onclick=()=>{ chosenDate=!chosenDate; $("dsToggle").classList.toggle("on",chosenDate); };
+
+/* ---------- Avvio rullino ---------- */
+$("loadBtn").onclick=async()=>{
+  const cur=await DB.getMeta();
+  if(cur && cur.status==="shooting" && cur.count>0 &&
+     !confirm("C'è un rullino in corso con "+cur.count+" scatti. Iniziarne uno nuovo li cancella. Continuare?")) return;
+  roll={ id:"r"+Date.now(), film:chosenFilm, mode:chosenMode, date:chosenDate,
+         capacity:CAPACITY, count:0, status:"shooting", completedAt:null, revealAt:null };
+  await DB.clearShots(); await DB.setMeta(roll);
+  startCamera();
+};
+$("resumeBtn").onclick=()=>routeFromMeta(true);
+
+/* ---------- Camera ---------- */
+async function startCamera(){
+  show("camera");
+  $("filmBadge").textContent=FILMS[roll.film].name.toUpperCase();
+  updateRemain(); armShutter(true,false);
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:"environment"}, width:{ideal:1920}}, audio:false});
+    const v=$("view"); v.srcObject=stream;
+    try{ await v.play(); }catch(e){}
+  }catch(e){
+    toast("Camera non disponibile. Consenti l'accesso o usa HTTPS.");
+  }
+}
+function stopCamera(){ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
+function updateRemain(){ $("remain").textContent=roll.capacity-roll.count; }
+function armShutter(shutterOn,windArm){
+  armed=shutterOn;
+  $("shutter").disabled=!shutterOn;
+  const w=$("wind");
+  w.disabled=!windArm; w.classList.toggle("arm",windArm);
+  w.textContent=windArm?"↻ Avanza":"Avanza";
+}
+
+$("shutter").onclick=async()=>{
+  if(!armed) return;
+  if(!stream){ toast("Camera non attiva: consenti l'accesso e riprova"); return; }
+  const v=$("view");
+  if(!v.videoWidth){ toast("Attendi l'avvio della camera"); return; }
+  // flash
+  $("flash").animate([{opacity:.9},{opacity:0}],{duration:180});
+  // cattura frame con lo stesso crop "cover" del mirino: ciò che vedi è ciò che salvi
+  const vw=v.videoWidth, vh=v.videoHeight;
+  const ew=v.clientWidth||vw, eh=v.clientHeight||vh;
+  const sc=Math.max(ew/vw, eh/vh);                 // scala usata da object-fit:cover
+  const sw=Math.round(ew/sc), sh=Math.round(eh/sc); // regione sorgente visibile
+  const sx=Math.round((vw-sw)/2), sy=Math.round((vh-sh)/2);
+  const scale=Math.min(1, MAXDIM/Math.max(sw,sh));
+  const w=Math.round(sw*scale), h=Math.round(sh*scale);
+  const cv=$("work"); cv.width=w; cv.height=h;
+  const ctx=cv.getContext("2d");
+  ctx.drawImage(v,sx,sy,sw,sh,0,0,w,h);
+  applyFilm(ctx,w,h,FILMS[roll.film],{date:roll.date});
+  const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.9));
+  await DB.addShot({ id:roll.id+"_"+roll.count, rollId:roll.id, blob, takenAt:Date.now() });
+  roll.count++; await DB.setMeta(roll); updateRemain();
+  if(roll.count>=roll.capacity){ completeRoll(); }
+  else { armShutter(false,true); }   // obbliga a caricare prima dello scatto dopo
+};
+$("wind").onclick=()=>{ if($("wind").disabled) return;
+  // "avanzamento pellicola": arma il prossimo scatto
+  $("wind").animate([{transform:"rotate(0)"},{transform:"rotate(180deg)"}],{duration:260});
+  armShutter(true,false);
+};
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible" && $("camera").classList.contains("on") && roll){
+    const t=stream && stream.getVideoTracks()[0];
+    if(!t || t.readyState!=="live") startCamera();
+  }
+});
+$("quitBtn").onclick=()=>{ stopCamera(); show("chooser"); refreshChooser(); };
+
+/* ---------- Fine rullino ---------- */
+async function completeRoll(){
+  stopCamera();
+  roll.status = roll.mode==="lock24h" ? "developing" : "revealed";
+  roll.completedAt=Date.now();
+  roll.revealAt = roll.mode==="lock24h" ? roll.completedAt+LOCK_MS : roll.completedAt;
+  await DB.setMeta(roll);
+  if(roll.status==="revealed") openGallery();
+  else openDeveloping();
+}
+
+/* ---------- Sviluppo (lock 24h) ---------- */
+function openDeveloping(){
+  show("dev"); tickDev();
+  clearInterval(devTimer); devTimer=setInterval(tickDev,1000);
+}
+function tickDev(){
+  const left=roll.revealAt-Date.now();
+  if(left<=0){ clearInterval(devTimer);
+    roll.status="revealed"; DB.setMeta(roll).then(openGallery); return; }
+  const h=Math.floor(left/3.6e6), m=Math.floor(left%3.6e6/6e4), s=Math.floor(left%6e4/1e3);
+  $("devCount").textContent=[h,m,s].map(n=>String(n).padStart(2,"0")).join(":");
+}
+$("devBack").onclick=()=>{ clearInterval(devTimer); show("chooser"); refreshChooser(); };
+
+/* ---------- Galleria ---------- */
+let objUrls=[];
+async function openGallery(){
+  show("gallery");
+  const shots=await DB.allShots(roll.id);
+  objUrls.forEach(URL.revokeObjectURL); objUrls=[];
+  const grid=$("galGrid"); grid.innerHTML="";
+  $("galCount").textContent=shots.length+" scatti · "+FILMS[roll.film].name;
+  if(!shots.length){ grid.innerHTML='<div class="empty">Nessuno scatto in questo rullino.</div>'; return; }
+  shots.forEach((sh,i)=>{
+    const url=URL.createObjectURL(sh.blob); objUrls.push(url);
+    const im=document.createElement("img"); im.src=url; im.alt="scatto "+(i+1);
+    im.onclick=()=>openLb(url,sh,i+1); grid.appendChild(im);
+  });
+}
+$("newRoll").onclick=async()=>{
+  if(!confirm("Iniziare un nuovo rullino? Gli scatti attuali verranno rimossi da questa app "+
+              "(salvali prima sul telefono se vuoi tenerli).")) return;
+  await DB.clearShots(); roll=null; await DB.delMeta();
+  show("chooser"); refreshChooser();
+};
+$("saveAll").onclick=async()=>{
+  const shots=await DB.allShots(roll.id);
+  const ok=await saveShots(shots.map((s,i)=>({blob:s.blob,name:fname(i+1)})));
+  if(ok) toast("Salvataggio avviato ("+shots.length+")");
+};
+
+/* lightbox */
+let lbShot=null;
+function openLb(url,sh,n){ lbShot={sh,n}; $("lbImg").src=url; $("lb").classList.add("on"); }
+$("lbClose").onclick=()=>$("lb").classList.remove("on");
+$("lbSave").onclick=async()=>{ if(!lbShot) return;
+  const ok=await saveShots([{blob:lbShot.sh.blob,name:fname(lbShot.n)}]); if(ok) toast("Salvato"); };
+
+/* ---------- util ---------- */
+function fname(n){ return "rullino_"+(roll?roll.film:"")+"_"+String(n).padStart(2,"0")+".jpg"; }
+function downloadBlob(blob,name){
+  const url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download=name; document.body.appendChild(a); a.click();
+  a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+/* Su mobile usa il foglio di condivisione (iOS: "Salva immagine" nelle Foto).
+   Altrove ricade sul download classico. */
+async function saveShots(items){
+  const files=items.map(it=>new File([it.blob],it.name,{type:"image/jpeg"}));
+  if(navigator.canShare && navigator.canShare({files})){
+    try{ await navigator.share({files,title:"PhotoVintageMemory"}); return true; }
+    catch(e){ if(e && e.name==="AbortError") return false; }
+  }
+  for(let i=0;i<items.length;i++){ downloadBlob(items[i].blob,items[i].name); await sleep(300); }
+  return true;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---------- Ripresa stato all'avvio ---------- */
+function refreshChooser(){ buildChooser();
+  DB.getMeta().then(m=>{ $("resumeBtn").style.display =
+    (m && m.status==="shooting") ? "block" : "none"; }); }
+
+async function routeFromMeta(force){
+  const m=await DB.getMeta();
+  if(!m){ show("chooser"); refreshChooser(); return; }
+  roll=m;
+  if(m.status==="shooting"){
+    if(m.count>=m.capacity){ await completeRoll(); return; }   // stato rimasto a metà: chiudi il rullino
+    if(force) startCamera(); else { show("chooser"); refreshChooser(); }
+  }
+  else if(m.status==="developing"){
+    if(Date.now()>=m.revealAt){ roll.status="revealed"; await DB.setMeta(roll); openGallery(); }
+    else openDeveloping();
+  }
+  else if(m.status==="revealed"){ openGallery(); }
+  else { show("chooser"); refreshChooser(); }
+}
+
+buildChooser();
+routeFromMeta(false);
+</script>
+</body>
+</html>
